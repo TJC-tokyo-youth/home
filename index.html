@@ -17,7 +17,8 @@ header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;pa
 h1{font-family:"DotGothic16",sans-serif;font-size:1.35rem;margin:0;font-weight:700}
 header p{margin:2px 0 0;font-size:.8rem;opacity:.85}
 nav{position:sticky;top:0;z-index:5;display:flex;gap:6px;justify-content:center;padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border)}
-nav button{font:inherit;font-weight:700;font-size:.85rem;border:none;cursor:pointer;padding:9px 16px;border-radius:999px;background:transparent;color:var(--sub)}
+nav{gap:4px;overflow-x:auto}
+nav button,nav a{font:inherit;font-weight:700;font-size:.85rem;border:none;cursor:pointer;padding:9px 11px;border-radius:999px;background:transparent;color:var(--sub);text-decoration:none;white-space:nowrap}
 nav button.on{background:var(--accent);color:#fff}
 main{max-width:640px;margin:0 auto;padding:18px 16px calc(56px + env(safe-area-inset-bottom,0px))}
 .pane{display:none}.pane.on{display:block}
@@ -35,6 +36,9 @@ main{max-width:640px;margin:0 auto;padding:18px 16px calc(56px + env(safe-area-i
 .grid figure{margin:0;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer}
 .grid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
 .grid figcaption{font-size:.78rem;padding:8px 10px;color:var(--sub)}
+.album{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.album .ic{font-size:1.7rem}.album small{display:block;color:var(--accent-d);font-size:.8rem;font-weight:700;margin-top:2px}
+#albumList{margin-bottom:16px}
 .badge{margin-left:8px;font-size:.72rem;background:var(--accent);color:#fff;border-radius:999px;padding:2px 9px}
 .empty{color:var(--sub);text-align:center;padding:28px 0;font-size:.9rem;list-style:none}
 #lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:20;padding:16px}
@@ -48,11 +52,12 @@ main{max-width:640px;margin:0 auto;padding:18px 16px calc(56px + env(safe-area-i
   <button data-t="schedule">予定</button>
   <button data-t="photos">写真</button>
   <button data-t="prayer">お祈り</button>
+  <a href="cards.html">分かち合い</a>
 </nav>
 <main>
   <section id="news" class="pane on"><ul class="list" id="newsList"></ul></section>
   <section id="schedule" class="pane"><ul class="list" id="schList"></ul><div class="sub-h" id="pastH" hidden>過去の予定</div><ul class="list" id="pastList"></ul></section>
-  <section id="photos" class="pane"><div class="grid" id="grid"></div></section>
+  <section id="photos" class="pane"><ul class="list" id="albumList"></ul><div class="grid" id="grid"></div></section>
   <section id="prayer" class="pane"><ul class="list" id="prayList"></ul></section>
 </main>
 <div id="lb"><img alt=""><p></p></div>
@@ -97,7 +102,13 @@ function renderSchedule(d){
 }
 function renderPhotos(d){
   const g=$('grid'); if(guard(g,d,'写真はまだありません'))return;
-  d.forEach(p=>{
+  d.filter(p=>p.album&&/^https?:\/\//.test(p.album)).forEach(p=>{
+    const li=el('li'),a=el('a','card album');a.href=p.album;a.target='_blank';a.rel='noopener noreferrer';
+    a.appendChild(el('span','ic','📷'));
+    const t=el('div');t.appendChild(el('div','ttl',p.title||'アルバム'));t.appendChild(el('small','','Google フォトで見る →'));
+    a.appendChild(t);li.appendChild(a);$('albumList').appendChild(li);
+  });
+  d.filter(p=>p.file).forEach(p=>{
     const f=el('figure'),i=el('img');i.src='photos/'+p.file;i.loading='lazy';i.alt=p.caption||'';
     f.appendChild(i);if(p.caption)f.appendChild(el('figcaption','',p.caption));
     f.onclick=()=>{const lb=$('lb');lb.querySelector('img').src=i.src;lb.querySelector('p').textContent=p.caption||'';lb.classList.add('on')};
