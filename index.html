@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<title>東京教会青年会</title>
+<style>
+:root{--bg:#eceef1;--ink:#2c3550;--sub:#7c8296;--accent:#d78744;--accent-d:#b96f34;--navy:#283763;--navy2:#334578;--card:#fff;--border:#dcdfe6}
+@media(prefers-color-scheme:dark){:root{--bg:#1c2030;--ink:#eceef5;--sub:#9aa0b8;--accent:#e0925c;--accent-d:#e0925c;--navy:#1c2544;--navy2:#28356a;--card:#262b40;--border:#3a4060}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic","Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:calc(18px + env(safe-area-inset-top,0px)) 20px 18px;display:flex;align-items:center;gap:14px}
+.logo{width:56px;height:56px;border-radius:50%;background:#fff;padding:6px;object-fit:contain;flex-shrink:0}
+h1{font-family:"DotGothic16",sans-serif;font-size:1.35rem;margin:0;font-weight:700}
+header p{margin:2px 0 0;font-size:.8rem;opacity:.85}
+nav{position:sticky;top:0;z-index:5;display:flex;gap:6px;justify-content:center;padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--border)}
+nav button{font:inherit;font-weight:700;font-size:.85rem;border:none;cursor:pointer;padding:9px 16px;border-radius:999px;background:transparent;color:var(--sub)}
+nav button.on{background:var(--accent);color:#fff}
+main{max-width:640px;margin:0 auto;padding:18px 16px calc(56px + env(safe-area-inset-bottom,0px))}
+.pane{display:none}.pane.on{display:block}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px}
+.date{color:var(--accent-d);font-size:.78rem;font-weight:700}
+.ttl{font-weight:700;margin:4px 0}
+.body{font-size:.9rem;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.meta{color:var(--sub);font-size:.82rem;margin:2px 0 4px}
+.ev{display:flex;gap:14px;align-items:flex-start}.ev.past{opacity:.5}
+.dbox{flex-shrink:0;width:58px;text-align:center;background:var(--navy);color:#fff;border-radius:12px;padding:8px 0;line-height:1.25}
+.dbox b{display:block;font-size:1.3rem}.dbox span{font-size:.72rem;opacity:.85}
+.sub-h{margin:24px 0 10px;font-size:.85rem;color:var(--sub);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.grid figure{margin:0;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer}
+.grid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.grid figcaption{font-size:.78rem;padding:8px 10px;color:var(--sub)}
+.badge{margin-left:8px;font-size:.72rem;background:var(--accent);color:#fff;border-radius:999px;padding:2px 9px}
+.empty{color:var(--sub);text-align:center;padding:28px 0;font-size:.9rem;list-style:none}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:20;padding:16px}
+#lb.on{display:flex}#lb img{max-width:100%;max-height:80vh;border-radius:8px}#lb p{color:#fff;margin:0;font-size:.9rem}
+</style>
+</head>
+<body>
+<header><img src="logo.png" class="logo" alt=""><div><h1>東京教会青年会</h1><p>真イエス教会</p></div></header>
+<nav>
+  <button data-t="news" class="on">お知らせ</button>
+  <button data-t="schedule">予定</button>
+  <button data-t="photos">写真</button>
+  <button data-t="prayer">お祈り</button>
+</nav>
+<main>
+  <section id="news" class="pane on"><ul class="list" id="newsList"></ul></section>
+  <section id="schedule" class="pane"><ul class="list" id="schList"></ul><div class="sub-h" id="pastH" hidden>過去の予定</div><ul class="list" id="pastList"></ul></section>
+  <section id="photos" class="pane"><div class="grid" id="grid"></div></section>
+  <section id="prayer" class="pane"><ul class="list" id="prayList"></ul></section>
+</main>
+<div id="lb"><img alt=""><p></p></div>
+<script>
+const $=id=>document.getElementById(id);
+const WD=['日','月','火','水','木','金','土'];
+const D=s=>new Date(s+'T00:00:00');
+const fmt=s=>{const x=D(s);return `${x.getMonth()+1}/${x.getDate()}（${WD[x.getDay()]}）`};
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+async function load(f){try{const r=await fetch(f,{cache:'no-store'});if(!r.ok)throw 0;return await r.json()}catch(e){return null}}
+function guard(box,data,msg){
+  if(data===null){const p=el('p','empty','読み込めませんでした');box.appendChild(p);return true}
+  if(!data.length){box.appendChild(el('p','empty',msg));return true}
+  return false;
+}
+function renderNews(d){
+  const ul=$('newsList'); if(guard(ul,d,'お知らせはまだありません'))return;
+  [...d].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.date.localeCompare(a.date)).forEach(n=>{
+    const li=el('li','card');
+    li.appendChild(el('div','date',(n.pinned?'📌 ':'')+fmt(n.date)));
+    li.appendChild(el('div','ttl',n.title));
+    if(n.body)li.appendChild(el('div','body',n.body));
+    ul.appendChild(li);
+  });
+}
+function evItem(e,past){
+  const x=D(e.date),li=el('li','card ev'+(past?' past':'')),b=el('div','dbox');
+  b.appendChild(el('span','',(x.getMonth()+1)+'月'));b.appendChild(el('b','',x.getDate()));b.appendChild(el('span','','（'+WD[x.getDay()]+'）'));
+  const i=el('div');i.appendChild(el('div','ttl',e.title));
+  const m=[e.time,e.place].filter(Boolean).join(' ／ ');if(m)i.appendChild(el('div','meta',m));
+  if(e.note)i.appendChild(el('div','body',e.note));
+  li.appendChild(b);li.appendChild(i);return li;
+}
+function renderSchedule(d){
+  const ul=$('schList'); if(guard(ul,d,'予定はまだありません'))return;
+  const today=new Date().toLocaleDateString('sv-SE');
+  const up=d.filter(e=>e.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
+  const past=d.filter(e=>e.date<today).sort((a,b)=>b.date.localeCompare(a.date));
+  if(!up.length)ul.appendChild(el('p','empty','これからの予定はありません'));
+  up.forEach(e=>ul.appendChild(evItem(e,false)));
+  if(past.length){$('pastH').hidden=false;past.forEach(e=>$('pastList').appendChild(evItem(e,true)))}
+}
+function renderPhotos(d){
+  const g=$('grid'); if(guard(g,d,'写真はまだありません'))return;
+  d.forEach(p=>{
+    const f=el('figure'),i=el('img');i.src='photos/'+p.file;i.loading='lazy';i.alt=p.caption||'';
+    f.appendChild(i);if(p.caption)f.appendChild(el('figcaption','',p.caption));
+    f.onclick=()=>{const lb=$('lb');lb.querySelector('img').src=i.src;lb.querySelector('p').textContent=p.caption||'';lb.classList.add('on')};
+    g.appendChild(f);
+  });
+}
+function renderPrayer(d){
+  const ul=$('prayList'); if(guard(ul,d,'お祈りの課題はまだありません'))return;
+  [...d].sort((a,b)=>b.date.localeCompare(a.date)).forEach(p=>{
+    const li=el('li','card'),h=el('div','date',fmt(p.date));
+    if(p.answered)h.appendChild(el('span','badge','感謝報告 ✓'));
+    li.appendChild(h);li.appendChild(el('div','body',p.text));ul.appendChild(li);
+  });
+}
+$('lb').onclick=()=>$('lb').classList.remove('on');
+const names=['news','schedule','photos','prayer'];
+function show(n){
+  if(!names.includes(n))n='news';
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===n));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===n));
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{location.hash=b.dataset.t});
+addEventListener('hashchange',()=>show(location.hash.slice(1)));
+show(location.hash.slice(1));
+(async()=>{
+  const [n,s,p,r]=await Promise.all(['announcements','schedule','photos','prayers'].map(x=>load(x+'.json')));
+  renderNews(n);renderSchedule(s);renderPhotos(p);renderPrayer(r);
+})();
+</script>
+</body>
+</html>
