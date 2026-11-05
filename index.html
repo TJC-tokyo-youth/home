@@ -113,7 +113,7 @@ function evItem(e,past){
   const x=D(e.date),li=el('li','card ev'+(past?' past':'')),b=el('div','dbox');
   b.appendChild(el('span','',(x.getMonth()+1)+'月'));b.appendChild(el('b','',x.getDate()));b.appendChild(el('span','',t('wf')(t('wd')[x.getDay()])));
   const i=el('div');i.appendChild(el('div','ttl',T(e.title)));
-  if(e.leader)i.appendChild(el('div','meta',t('leader')+'：'+T(e.leader)));
+  if(T(e.leader))i.appendChild(el('div','meta',t('leader')+'：'+T(e.leader)));
   if(e.time)i.appendChild(el('div','meta',e.time));
   if(T(e.place))i.appendChild(el('div','meta',T(e.place)));
   if(e.note)i.appendChild(el('div','body',T(e.note)));
