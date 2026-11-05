@@ -75,7 +75,7 @@ const I={
   answered:'感謝報告 ✓',album:'アルバム',albumLink:'Google フォトで見る →',wd:['日','月','火','水','木','金','土'],wf:w=>'（'+w+'）'},
  zh:{title:'東京教會青年會',sub:'真耶穌教會',news:'公告',schedule:'行程',photos:'照片',prayer:'代禱',cards:'分享卡',leader:'主領',past:'過去的行程',
   eNews:'目前沒有公告',eSch:'目前沒有行程',eUp:'近期沒有行程',ePh:'目前沒有照片',ePr:'目前沒有代禱事項',err:'無法讀取',
-  answered:'蒙應允 ✓',album:'相簿',albumLink:'在 Google 相簿查看 →',wd:['日','一','二','三','四','五','六'],wf:w=>'（週'+w+'）'}
+  answered:'蒙應允 ✓',album:'相簿',albumLink:'在 Google 相簿查看 →',wd:['日','一','二','三','四','五','六'],wf:w=>'（'+w+'）'}
 };
 let lang=/^zh/i.test(navigator.language)?'zh':'ja';
 try{const s=localStorage.getItem('lang');if(s==='ja'||s==='zh')lang=s}catch(e){}
