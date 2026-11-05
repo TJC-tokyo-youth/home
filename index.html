@@ -39,6 +39,12 @@ main{max-width:640px;margin:0 auto;padding:18px 16px calc(56px + env(safe-area-i
 .album{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
 .album .ic{font-size:1.7rem}.album small{display:block;color:var(--accent-d);font-size:.8rem;font-weight:700;margin-top:2px}
 #albumList{margin-bottom:16px}
+.years{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.years button{font:inherit;font-size:.82rem;font-weight:700;border:1px solid var(--border);background:var(--card);color:var(--sub);border-radius:999px;padding:6px 16px;cursor:pointer}
+.years button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.lang{margin-left:auto;display:flex;gap:4px;flex-shrink:0}
+.lang button{font:inherit;font-size:.75rem;font-weight:700;border:1px solid rgba(255,255,255,.55);background:transparent;color:#fff;border-radius:999px;padding:5px 10px;cursor:pointer}
+.lang button.on{background:#fff;color:var(--navy)}
 .badge{margin-left:8px;font-size:.72rem;background:var(--accent);color:#fff;border-radius:999px;padding:2px 9px}
 .empty{color:var(--sub);text-align:center;padding:28px 0;font-size:.9rem;list-style:none}
 #lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:20;padding:16px}
@@ -46,83 +52,120 @@ main{max-width:640px;margin:0 auto;padding:18px 16px calc(56px + env(safe-area-i
 </style>
 </head>
 <body>
-<header><img src="logo.png" class="logo" alt=""><div><h1>東京教会青年会</h1><p>真イエス教会</p></div></header>
+<header><img src="logo.png" class="logo" alt=""><div><h1 data-i18n="title">東京教会青年会</h1><p data-i18n="sub">真イエス教会</p></div>
+  <div class="lang"><button data-l="ja">日本語</button><button data-l="zh">中文</button></div></header>
 <nav>
-  <button data-t="news" class="on">お知らせ</button>
-  <button data-t="schedule">予定</button>
-  <button data-t="photos">写真</button>
-  <button data-t="prayer">お祈り</button>
-  <a href="cards.html">分かち合い</a>
+  <button data-t="news" data-i18n="news" class="on">お知らせ</button>
+  <button data-t="schedule" data-i18n="schedule">予定</button>
+  <button data-t="photos" data-i18n="photos">写真</button>
+  <button data-t="prayer" data-i18n="prayer">お祈り</button>
+  <a href="cards.html" data-i18n="cards">分かち合い</a>
 </nav>
 <main>
-  <section id="news" class="pane on"><ul class="list" id="newsList"></ul></section>
-  <section id="schedule" class="pane"><ul class="list" id="schList"></ul><div class="sub-h" id="pastH" hidden>過去の予定</div><ul class="list" id="pastList"></ul></section>
+  <section id="news" class="pane on"><div class="years"></div><ul class="list" id="newsList"></ul></section>
+  <section id="schedule" class="pane"><div class="years"></div><ul class="list" id="schList"></ul><div class="sub-h" id="pastH" data-i18n="past" hidden>過去の予定</div><ul class="list" id="pastList"></ul></section>
   <section id="photos" class="pane"><ul class="list" id="albumList"></ul><div class="grid" id="grid"></div></section>
   <section id="prayer" class="pane"><ul class="list" id="prayList"></ul></section>
 </main>
 <div id="lb"><img alt=""><p></p></div>
 <script>
+const I={
+ ja:{title:'東京教会青年会',sub:'真イエス教会',news:'お知らせ',schedule:'予定',photos:'写真',prayer:'お祈り',cards:'分かち合い',past:'過去の予定',
+  eNews:'お知らせはまだありません',eSch:'予定はまだありません',eUp:'これからの予定はありません',ePh:'写真はまだありません',ePr:'お祈りの課題はまだありません',err:'読み込めませんでした',
+  answered:'感謝報告 ✓',album:'アルバム',albumLink:'Google フォトで見る →',wd:['日','月','火','水','木','金','土'],wf:w=>'（'+w+'）'},
+ zh:{title:'東京教會青年會',sub:'真耶穌教會',news:'公告',schedule:'行程',photos:'照片',prayer:'代禱',cards:'分享卡',past:'過去的行程',
+  eNews:'目前沒有公告',eSch:'目前沒有行程',eUp:'近期沒有行程',ePh:'目前沒有照片',ePr:'目前沒有代禱事項',err:'無法讀取',
+  answered:'蒙應允 ✓',album:'相簿',albumLink:'在 Google 相簿查看 →',wd:['日','一','二','三','四','五','六'],wf:w=>'（週'+w+'）'}
+};
+let lang=/^zh/i.test(navigator.language)?'zh':'ja';
+try{const s=localStorage.getItem('lang');if(s==='ja'||s==='zh')lang=s}catch(e){}
+let DATA=null;
+let year=null;
+const yr=s=>+String(s).slice(0,4);
+function yearList(){
+  const ys=new Set([2026,2027]);
+  [DATA&&DATA.n,DATA&&DATA.s].forEach(a=>(a||[]).forEach(x=>{const y=yr(x.date);if(y)ys.add(y)}));
+  return [...ys].sort((a,b)=>a-b);
+}
 const $=id=>document.getElementById(id);
-const WD=['日','月','火','水','木','金','土'];
+const t=k=>I[lang][k];
+const T=v=>v&&typeof v==='object'?(v[lang]||v.ja||v.zh||''):(v==null?'':v);
 const D=s=>new Date(s+'T00:00:00');
-const fmt=s=>{const x=D(s);return `${x.getMonth()+1}/${x.getDate()}（${WD[x.getDay()]}）`};
-const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const fmt=s=>{const x=D(s);return (x.getMonth()+1)+'/'+x.getDate()+t('wf')(t('wd')[x.getDay()])};
+const el=(tag,c,x)=>{const e=document.createElement(tag);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 async function load(f){try{const r=await fetch(f,{cache:'no-store'});if(!r.ok)throw 0;return await r.json()}catch(e){return null}}
-function guard(box,data,msg){
-  if(data===null){const p=el('p','empty','読み込めませんでした');box.appendChild(p);return true}
-  if(!data.length){box.appendChild(el('p','empty',msg));return true}
+function guard(box,data,key){
+  if(data===null){box.appendChild(el('p','empty',t('err')));return true}
+  if(!data.length){box.appendChild(el('p','empty',t(key)));return true}
   return false;
 }
 function renderNews(d){
-  const ul=$('newsList'); if(guard(ul,d,'お知らせはまだありません'))return;
-  [...d].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.date.localeCompare(a.date)).forEach(n=>{
+  const ul=$('newsList'),list=d===null?null:d.filter(n=>yr(n.date)===year); if(guard(ul,list,'eNews'))return;
+  [...list].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.date.localeCompare(a.date)).forEach(n=>{
     const li=el('li','card');
     li.appendChild(el('div','date',(n.pinned?'📌 ':'')+fmt(n.date)));
-    li.appendChild(el('div','ttl',n.title));
-    if(n.body)li.appendChild(el('div','body',n.body));
+    li.appendChild(el('div','ttl',T(n.title)));
+    if(n.body)li.appendChild(el('div','body',T(n.body)));
     ul.appendChild(li);
   });
 }
 function evItem(e,past){
   const x=D(e.date),li=el('li','card ev'+(past?' past':'')),b=el('div','dbox');
-  b.appendChild(el('span','',(x.getMonth()+1)+'月'));b.appendChild(el('b','',x.getDate()));b.appendChild(el('span','','（'+WD[x.getDay()]+'）'));
-  const i=el('div');i.appendChild(el('div','ttl',e.title));
-  const m=[e.time,e.place].filter(Boolean).join(' ／ ');if(m)i.appendChild(el('div','meta',m));
-  if(e.note)i.appendChild(el('div','body',e.note));
+  b.appendChild(el('span','',(x.getMonth()+1)+'月'));b.appendChild(el('b','',x.getDate()));b.appendChild(el('span','',t('wf')(t('wd')[x.getDay()])));
+  const i=el('div');i.appendChild(el('div','ttl',T(e.title)));
+  const m=[e.time,T(e.place)].filter(Boolean).join(' ／ ');if(m)i.appendChild(el('div','meta',m));
+  if(e.note)i.appendChild(el('div','body',T(e.note)));
   li.appendChild(b);li.appendChild(i);return li;
 }
 function renderSchedule(d){
-  const ul=$('schList'); if(guard(ul,d,'予定はまだありません'))return;
+  const ul=$('schList'),list=d===null?null:d.filter(e=>yr(e.date)===year); if(guard(ul,list,'eSch'))return;
   const today=new Date().toLocaleDateString('sv-SE');
-  const up=d.filter(e=>e.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
-  const past=d.filter(e=>e.date<today).sort((a,b)=>b.date.localeCompare(a.date));
-  if(!up.length)ul.appendChild(el('p','empty','これからの予定はありません'));
+  const up=list.filter(e=>e.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
+  const past=list.filter(e=>e.date<today).sort((a,b)=>b.date.localeCompare(a.date));
+  if(!up.length)ul.appendChild(el('p','empty',t('eUp')));
   up.forEach(e=>ul.appendChild(evItem(e,false)));
   if(past.length){$('pastH').hidden=false;past.forEach(e=>$('pastList').appendChild(evItem(e,true)))}
 }
 function renderPhotos(d){
-  const g=$('grid'); if(guard(g,d,'写真はまだありません'))return;
+  const g=$('grid'); if(guard(g,d,'ePh'))return;
   d.filter(p=>p.album&&/^https?:\/\//.test(p.album)).forEach(p=>{
     const li=el('li'),a=el('a','card album');a.href=p.album;a.target='_blank';a.rel='noopener noreferrer';
     a.appendChild(el('span','ic','📷'));
-    const t=el('div');t.appendChild(el('div','ttl',p.title||'アルバム'));t.appendChild(el('small','','Google フォトで見る →'));
-    a.appendChild(t);li.appendChild(a);$('albumList').appendChild(li);
+    const x=el('div');x.appendChild(el('div','ttl',T(p.title)||t('album')));x.appendChild(el('small','',t('albumLink')));
+    a.appendChild(x);li.appendChild(a);$('albumList').appendChild(li);
   });
   d.filter(p=>p.file).forEach(p=>{
-    const f=el('figure'),i=el('img');i.src='photos/'+p.file;i.loading='lazy';i.alt=p.caption||'';
-    f.appendChild(i);if(p.caption)f.appendChild(el('figcaption','',p.caption));
-    f.onclick=()=>{const lb=$('lb');lb.querySelector('img').src=i.src;lb.querySelector('p').textContent=p.caption||'';lb.classList.add('on')};
+    const f=el('figure'),i=el('img'),cap=T(p.caption);i.src='photos/'+p.file;i.loading='lazy';i.alt=cap;
+    f.appendChild(i);if(cap)f.appendChild(el('figcaption','',cap));
+    f.onclick=()=>{const lb=$('lb');lb.querySelector('img').src=i.src;lb.querySelector('p').textContent=cap;lb.classList.add('on')};
     g.appendChild(f);
   });
 }
 function renderPrayer(d){
-  const ul=$('prayList'); if(guard(ul,d,'お祈りの課題はまだありません'))return;
+  const ul=$('prayList'); if(guard(ul,d,'ePr'))return;
   [...d].sort((a,b)=>b.date.localeCompare(a.date)).forEach(p=>{
     const li=el('li','card'),h=el('div','date',fmt(p.date));
-    if(p.answered)h.appendChild(el('span','badge','感謝報告 ✓'));
-    li.appendChild(h);li.appendChild(el('div','body',p.text));ul.appendChild(li);
+    if(p.answered)h.appendChild(el('span','badge',t('answered')));
+    li.appendChild(h);li.appendChild(el('div','body',T(p.text)));ul.appendChild(li);
   });
 }
+function renderAll(){
+  document.documentElement.lang=lang==='zh'?'zh-Hant':'ja';
+  document.title=t('title');
+  document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
+  document.querySelectorAll('.lang button').forEach(b=>b.classList.toggle('on',b.dataset.l===lang));
+  ['newsList','schList','pastList','albumList','prayList','grid'].forEach(id=>$(id).innerHTML='');
+  $('pastH').hidden=true;
+  const ys=yearList();
+  if(year===null||!ys.includes(year)){const cy=new Date().getFullYear();year=ys.includes(cy)?cy:ys[ys.length-1]}
+  document.querySelectorAll('.years').forEach(c=>{c.innerHTML='';ys.forEach(y=>{const b=el('button',y===year?'on':'',y+'年');b.onclick=()=>{year=y;renderAll()};c.appendChild(b)})});
+  if(!DATA)return;
+  renderNews(DATA.n);renderSchedule(DATA.s);renderPhotos(DATA.p);renderPrayer(DATA.r);
+}
+document.querySelectorAll('.lang button').forEach(b=>b.onclick=()=>{
+  lang=b.dataset.l;try{localStorage.setItem('lang',lang)}catch(e){}
+  renderAll();
+});
 $('lb').onclick=()=>$('lb').classList.remove('on');
 const names=['news','schedule','photos','prayer'];
 function show(n){
@@ -133,9 +176,10 @@ function show(n){
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{location.hash=b.dataset.t});
 addEventListener('hashchange',()=>show(location.hash.slice(1)));
 show(location.hash.slice(1));
+renderAll();
 (async()=>{
   const [n,s,p,r]=await Promise.all(['announcements','schedule','photos','prayers'].map(x=>load(x+'.json')));
-  renderNews(n);renderSchedule(s);renderPhotos(p);renderPrayer(r);
+  DATA={n,s,p,r};renderAll();
 })();
 </script>
 </body>
